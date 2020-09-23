@@ -13,7 +13,7 @@ import com.alipay.sofa.jraft.util.Utils
 import org.grapheco.commons.util.Logging
 import com.alipay.sofa.jraft.{Closure, Status, Iterator => SofaIterator}
 
-class PandaGraphStateMachine() extends StateMachineAdapter with Logging{
+class RegionFsStateMachine() extends StateMachineAdapter with Logging{
 
   /**
     * Leader term

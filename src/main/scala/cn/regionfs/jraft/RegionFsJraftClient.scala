@@ -3,7 +3,7 @@ package cn.regionfs.jraft
 import com.alipay.sofa.jraft.rpc.RpcClient
 import org.grapheco.commons.util.Logging
 
-object PandaJraftClient extends Logging{
+object RegionFsJraftClient extends Logging{
 
 /*  def getOrCreateRpcClient(): RpcClient = {
     if (PandaRuntimeContext.contextGetOption[RpcClient]().isEmpty) {

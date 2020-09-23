@@ -32,6 +32,12 @@
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-network-common_2.11</artifactId>
             <version>2.2.0</version>
+            <exclusions>
+                <exclusion>
+                    <artifactId>netty-all</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.grapheco</groupId>
@@ -58,11 +64,11 @@
             <artifactId>commons-codec</artifactId>
             <version>1.10</version>
         </dependency>
-        <dependency>
+        <!--<dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.25</version>
-        </dependency>
+        </dependency>-->
         <!--
         <dependency>
             <groupId>com.github.serceman</groupId>

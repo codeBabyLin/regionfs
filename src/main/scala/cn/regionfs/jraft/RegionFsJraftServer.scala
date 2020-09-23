@@ -1,6 +1,7 @@
 package cn.regionfs.jraft
 
 import java.io.File
+
 import scala.collection.JavaConverters._
 import cn.regionfs.jraft.rpc.{GetGraphDataStateRequestProcessor, GetNeo4jBoltAddressRequestProcessor}
 import com.alipay.sofa.jraft.conf.Configuration
@@ -10,19 +11,17 @@ import com.alipay.sofa.jraft.rpc.impl.cli.CliClientServiceImpl
 import com.alipay.sofa.jraft.rpc.{RaftRpcServerFactory, RpcServer}
 import com.alipay.sofa.jraft.{JRaftUtils, Node, RaftGroupService, RouteTable}
 import org.apache.commons.io.FileUtils
-import org.grapheco.commons.util.Logging
-
-class PandaJraftServer(dataPath: String,
-                       groupId: String,
-                       serverIdStr: String,
-                       initConfStr: String) extends Logging {
+import org.grapheco.commons.util.{ConfigurationEx, Logging, ProcessUtils}
+class RegionFsJraftServer(dataPath: String,
+                          groupId: String,
+                          serverIdStr: String,
+                          initConfStr: String) {
 
   private var raftGroupService: RaftGroupService = null
   private var node: Node = null
-  private var fsm: PandaGraphStateMachine = null
+  private var fsm: RegionFsStateMachine = null
 
-  @volatile
-  private var started = false
+
 
   // parse args
   val serverId: PeerId = new PeerId()
@@ -38,10 +37,10 @@ class PandaJraftServer(dataPath: String,
     // (Here, the raft RPC and the business RPC use the same RPC server)
     val rpcServer: RpcServer = RaftRpcServerFactory.createRaftRpcServer(serverId.getEndpoint)
     // add business RPC processor
-    rpcServer.registerProcessor(new GetNeo4jBoltAddressRequestProcessor(this))
-    rpcServer.registerProcessor(new GetGraphDataStateRequestProcessor(this))
+    //rpcServer.registerProcessor(new GetNeo4jBoltAddressRequestProcessor(this))
+    //rpcServer.registerProcessor(new GetGraphDataStateRequestProcessor(this))
     // init state machine
-    this.fsm = new PandaGraphStateMachine()
+    this.fsm = new RegionFsStateMachine()
 
     // set NodeOption
     val nodeOptions = new NodeOptions
@@ -52,7 +51,7 @@ class PandaJraftServer(dataPath: String,
     // dialbel CLI
     nodeOptions.setDisableCli(false)
     // set snapshot save period
-    nodeOptions.setSnapshotIntervalSecs(snapshotIntervalSecs())
+    nodeOptions.setSnapshotIntervalSecs(30)
     // set state machine args
     nodeOptions.setFsm(this.fsm)
     // set log save path (required)
@@ -60,30 +59,29 @@ class PandaJraftServer(dataPath: String,
     // set meta save path (required)
     nodeOptions.setRaftMetaUri(dataPath + File.separator + "raft_meta")
     // set snapshot save path (Optional)
-    if (useSnapshot()) nodeOptions.setSnapshotUri(dataPath + File.separator + "snapshot")
+   // if (useSnapshot()) nodeOptions.setSnapshotUri(dataPath + File.separator + "snapshot")
     // init raft group
     this.raftGroupService = new RaftGroupService(groupId, serverId, nodeOptions, rpcServer)
+    this.node = this.raftGroupService.start
+    //logger.info("Started PandaJraftServer at port:" + this.node.getNodeId.getPeerId.getPort)
+    val bool = true
+    while(this.node.getLeaderId ==null){
+      println("wait for leader!!!")
+      Thread.sleep(500)
+    }
+    println("leader is " + this.node.getLeaderId.getIp + ":" +this.node.getLeaderId.getPort)
   }
 
-  def start(): Unit = {
-    if (this.raftGroupService == null) {
-      this.init()
-    }
-    this.node = this.raftGroupService.start
-    this.started = true
-    logger.info("Started PandaJraftServer at port:" + this.node.getNodeId.getPeerId.getPort)
-  }
 
   def shutdown(): Unit = {
     this.node.shutdown()
-    this.started = false
+    //this.started = false
   }
 
-  def isStarted(): Boolean = this.started
+  //def isStarted(): Boolean = this.started
 
-  def getFsm: PandaGraphStateMachine = this.fsm
+  def getFsm: RegionFsStateMachine = this.fsm
 
-  //def getPandaJraftService: PandaJraftService = this
 
   def getNode: Node = this.node
 
@@ -91,23 +89,8 @@ class PandaJraftServer(dataPath: String,
 
   def getRaftGroupService: RaftGroupService = this.raftGroupService
 
-  def getNeo4jBoltServerAddress(): String = {
-    //val pandaConfig: PandaConfig = PandaRuntimeContext.contextGet[PandaConfig]()
-    //pandaConfig.bolt
-    null
-  }
 
-  def useSnapshot(): Boolean = {
-    //val pandaConfig: PandaConfig = PandaRuntimeContext.contextGet[PandaConfig]()
-    //pandaConfig.useSnapshot
-    null
-  }
 
-  def snapshotIntervalSecs(): Int = {
-    //val pandaConfig: PandaConfig = PandaRuntimeContext.contextGet[PandaConfig]()
-    //pandaConfig.snapshotIntervalSecs
-    null
-  }
 
   def getPeers(): Set[PeerId] = {
     val uri = this.serverId.getIp + ":" + this.serverId.getPort

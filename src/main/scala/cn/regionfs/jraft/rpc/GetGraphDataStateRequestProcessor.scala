@@ -1,10 +1,10 @@
 package cn.regionfs.jraft.rpc
 
-import cn.regionfs.jraft.PandaJraftServer
+import cn.regionfs.jraft.RegionFsJraftServer
 import com.alipay.sofa.jraft.rpc.{RpcContext, RpcProcessor}
 
 
-class GetGraphDataStateRequestProcessor(pandaJraftServer: PandaJraftServer) extends RpcProcessor[GetGraphDataStateRequest]{
+class GetGraphDataStateRequestProcessor(pandaJraftServer: RegionFsJraftServer) extends RpcProcessor[GetGraphDataStateRequest]{
   override def handleRequest(rpcCtx: RpcContext, request: GetGraphDataStateRequest): Unit = {
  /*  // val graphDatabasePathFile = PandaRuntimeContext.contextGet[PandaConfig]().getGraphDatabasePath.toFile
     var response: GraphDataStateResponse = null
