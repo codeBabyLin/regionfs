@@ -1,0 +1,5 @@
+package jraft
+
+object ServerStart {
+
+}
