@@ -3,7 +3,7 @@ package cn.regionfs.jraft
 import java.io.File
 
 import scala.collection.JavaConverters._
-import cn.regionfs.jraft.rpc.{GetGraphDataStateRequestProcessor, GetNeo4jBoltAddressRequestProcessor}
+import cn.regionfs.jraft.rpc.{GetAllNodesInfoRequestProcessor, GetGraphDataStateRequestProcessor, GetNeo4jBoltAddressRequestProcessor}
 import com.alipay.sofa.jraft.conf.Configuration
 import com.alipay.sofa.jraft.entity.PeerId
 import com.alipay.sofa.jraft.option.{CliOptions, NodeOptions}
@@ -36,8 +36,9 @@ class RegionFsJraftServer(dataPath: String,
     // add business RPC service
     // (Here, the raft RPC and the business RPC use the same RPC server)
     val rpcServer: RpcServer = RaftRpcServerFactory.createRaftRpcServer(serverId.getEndpoint)
+    //val rpcServer2 =
     // add business RPC processor
-    //rpcServer.registerProcessor(new GetNeo4jBoltAddressRequestProcessor(this))
+    rpcServer.registerProcessor(new GetAllNodesInfoRequestProcessor)
     //rpcServer.registerProcessor(new GetGraphDataStateRequestProcessor(this))
     // init state machine
     this.fsm = new RegionFsStateMachine()
@@ -110,6 +111,10 @@ class RegionFsJraftServer(dataPath: String,
     RouteTable.getInstance().updateConfiguration(this.groupId, conf)
     RouteTable.getInstance().refreshConfiguration(cliClientService, this.groupId, 10000)
     RouteTable.getInstance().selectLeader(this.groupId)
+  }
+
+  def loadGlobalSetting(): Unit = {
+
   }
 
 }

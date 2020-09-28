@@ -2,8 +2,14 @@ package org.grapheco.regionfs.client
 
 import java.io.InputStream
 import java.nio.ByteBuffer
+import java.util.Properties
 import java.util.concurrent.Executors
 
+import cn.regionfs.jraft.rpc.{GetAllNodesInfoRequest, NodesInfoResponse}
+import com.alipay.sofa.jraft.RouteTable
+import com.alipay.sofa.jraft.conf.Configuration
+import com.alipay.sofa.jraft.option.CliOptions
+import com.alipay.sofa.jraft.rpc.impl.cli.CliClientServiceImpl
 import io.netty.buffer.Unpooled
 import net.neoremind.kraps.RpcConf
 import net.neoremind.kraps.rpc.netty.{HippoEndpointRef, HippoRpcEnv, HippoRpcEnvFactory}
@@ -22,16 +28,22 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 /**
   * a client to regionfs servers
   */
-class FsClient(zks: String) extends Logging {
-  val zookeeper = ZooKeeperClient.create(zks)
-  val globalSetting = zookeeper.loadGlobalSetting()
+class FsClient(groupId: String, confstr: String) extends Logging {
+  val jc = new JraftClient(groupId, confstr)
+  val nodesInfo = jc.getAllnodesInfo().array
+  //val zookeeper = ZooKeeperClient.create(zks)
+  val globalSetting = jc.loadGlobalSetting()
   val clientFactory = new FsNodeClientFactory(globalSetting)
   val ringNodes = new Ring[Int]()
 
   //get all nodes
   val cachedClients = mutable.Map[Int, FsNodeClient]()
   val mapNodeWithAddress = mutable.Map[Int, RpcAddress]()
-  val nodesWatcher = zookeeper.watchNodeList(
+  nodesInfo.foreach(node => {
+    ringNodes += node.nodeId
+    mapNodeWithAddress += node.nodeId -> node.address
+  })
+/*  val nodesWatcher = zookeeper.watchNodeList(
     new ParsedChildNodeEventHandler[NodeServerInfo] {
       override def onCreated(t: NodeServerInfo): Unit = {
         mapNodeWithAddress.synchronized {
@@ -62,7 +74,7 @@ class FsClient(zks: String) extends Logging {
       }
 
       override def accepts(t: NodeServerInfo): Boolean = true
-    })
+    })*/
 
   //get all regions
   //32768->(1,2), 32769->(1), ...
@@ -170,11 +182,41 @@ class FsClient(zks: String) extends Logging {
   }
 
   def close() = {
-    nodesWatcher.close()
+    //nodesWatcher.close()
     clientFactory.close()
-    zookeeper.close()
+    //zookeeper.close()
   }
 }
+
+class JraftClient(groupId: String, confstr: String) {
+  var conf: Configuration = new Configuration()
+  if (!conf.parse(confstr)) {
+    println("Failed to parse conf: " + confstr)
+  }
+  val cli = new CliClientServiceImpl
+  cli.init(new CliOptions)
+  RouteTable.getInstance().updateConfiguration(groupId, conf)
+  if (!RouteTable.getInstance().refreshLeader(cli, groupId, 1000).isOk) {
+    println("Refresh leader failed")
+  }
+  val leader = RouteTable.getInstance().selectLeader(groupId)
+  val client = cli.getRpcClient
+
+  def getAllnodesInfo(): NodesInfoResponse = {
+    val request = new GetAllNodesInfoRequest
+    client.invokeSync(leader.getEndpoint, request, 5000)
+      .asInstanceOf[NodesInfoResponse]
+    //todo watch node on/off line
+  }
+
+  def loadGlobalSetting(): GlobalSetting = {
+    val props = new Properties()
+    props.setProperty("replica.num", "1")
+    new GlobalSetting(props)
+    //todo set or load props from jraft
+  }
+}
+
 
 /**
   * FsNodeClient factory
