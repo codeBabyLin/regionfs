@@ -1,3 +1,4 @@
+/*
 package regionfs
 
 import org.grapheco.regionfs.tool.RegionFsCmd
@@ -17,3 +18,4 @@ class ShellCmdTest extends FileTestBase {
     RegionFsCmd.main("stat -zk 10.0.82.217:2182".split(" "));
   }
 }
+*/

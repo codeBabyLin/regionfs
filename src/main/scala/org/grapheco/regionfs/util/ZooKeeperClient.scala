@@ -1,3 +1,4 @@
+/*
 package org.grapheco.regionfs.util
 
 import java.io._
@@ -263,4 +264,4 @@ class GlobalSettingNotFoundException(path: String) extends
 class ZNodeAlreadyExistExcetion(path: String) extends
   RegionFsException(s"existing node found in zookeeper: $path") {
 
-}
+}*/

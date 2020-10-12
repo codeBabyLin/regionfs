@@ -12,7 +12,7 @@ import scala.concurrent.duration.Duration
   * Created by bluejoe on 2019/8/31.
   */
 //an enhanced FsClient
-class FsAdmin(zks: String) extends FsClient(zks: String) {
+class FsAdmin(groupId: String, confstr: String) extends FsClient(groupId: String, confstr: String) {
   def stat(rpcTimeout: Duration): Stat = {
     Stat {
       val futures = mapNodeWithAddress.map(x =>

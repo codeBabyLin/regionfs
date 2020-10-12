@@ -13,8 +13,8 @@ object StartStandaloneNodeServer {
       println(s"USAGE: ${this.getClass.getSimpleName.dropRight(1)} <conf-file-path>")
     }
     else {
-      val server = FsNodeServer.create(new File(args(0)))
-      server.awaitTermination()
+      //val server = FsNodeServer.create(new File(args(0)))
+      //server.awaitTermination()
     }
   }
 }

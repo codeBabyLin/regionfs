@@ -351,7 +351,10 @@ class FsNodeClient(globalSetting: GlobalSetting, val endPointRef: HippoEndpointR
     }
   }
 }
+class RegionFsException(msg: String, cause: Throwable = null)
+  extends RuntimeException(msg, cause) {
 
+}
 class RegionFsClientException(msg: String, cause: Throwable = null)
   extends RegionFsException(msg, cause) {
 

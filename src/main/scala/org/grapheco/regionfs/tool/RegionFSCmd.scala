@@ -1,3 +1,4 @@
+/*
 package org.grapheco.regionfs.tool
 
 import java.io.{File, FileOutputStream, InputStream}
@@ -420,4 +421,4 @@ private class GetFilesShellCommandExecutor extends ShellCommandExecutor {
     output.done()
     admin.close
   }
-}
+}*/

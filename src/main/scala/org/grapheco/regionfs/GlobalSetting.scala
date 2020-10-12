@@ -5,7 +5,7 @@ import java.util.Properties
 
 import org.grapheco.commons.util.ConfigUtils._
 import org.grapheco.commons.util.{Configuration, ConfigurationEx, Logging}
-import org.grapheco.regionfs.util.ZooKeeperClient
+//import org.grapheco.regionfs.util.ZooKeeperClient
 
 import scala.collection.JavaConversions
 
@@ -53,12 +53,12 @@ class GlobalSettingWriter extends Logging {
       logger.trace(s"connecting to '$zks'...")
     }
 
-    val zk = ZooKeeperClient.createWithoutCheck(zks)
+    //val zk = ZooKeeperClient.createWithoutCheck(zks)
 
-    zk.createAbsentNodes()
-    zk.saveGlobalSetting(props)
+    //zk.createAbsentNodes()
+    //zk.saveGlobalSetting(props)
 
-    zk.close()
+    //zk.close()
   }
 
   def write(map: Map[String, String]): Unit = {

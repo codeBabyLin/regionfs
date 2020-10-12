@@ -1,3 +1,4 @@
+/*
 package org.grapheco.regionfs.tool
 
 import java.io.File
@@ -31,4 +32,4 @@ private class StartNodeShellCommandExecutor extends ShellCommandExecutor {
     val server = FsNodeServer.create(new File(commandLine.getOptionValue("conf")))
     server.awaitTermination()
   }
-}
+}*/

@@ -2,8 +2,10 @@ package org.grapheco.regionfs.server
 
 import java.io._
 import java.nio.ByteBuffer
+import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicInteger
 
+import cn.regionfs.jraft.RegionFsJraftServer
 import io.netty.buffer.Unpooled
 import net.neoremind.kraps.RpcConf
 import net.neoremind.kraps.rpc.netty.{HippoRpcEnv, HippoRpcEnvFactory}
@@ -30,24 +32,34 @@ object FsNodeServer {
   /**
     * create a FsNodeServer with a configuration file, e.g. node1.conf
     */
-  private def create(conf: ConfigurationEx, baseDir: File): FsNodeServer = {
-    val storeDir = conf.get(Constants.PARAMETER_KEY_DATA_STORE_DIR).asFile(baseDir).
-      getCanonicalFile.getAbsoluteFile
+  private def create(conf: ConfigurationEx, baseDir: File, jrfs: RegionFsJraftServer): FsNodeServer = {
+    //val storeDir = conf.get(Constants.PARAMETER_KEY_DATA_STORE_DIR).asFile(baseDir).getCanonicalFile.getAbsoluteFile
+    //val storeDir = conf.get(Constants.PARAMETER_KEY_DATA_STORE_DIR).asFile().getCanonicalFile.getAbsoluteFile
+    val storeDir = Paths.get(conf.get(Constants.PARAMETER_KEY_DATA_STORE_DIR).asString, "").toFile
+    //println(conf.get(Constants.PARAMETER_KEY_DATA_STORE_DIR).asString)
 
-    if (!storeDir.exists())
-      throw new StoreDirectoryNotFoundException(storeDir)
-
+    if (!storeDir.exists()) {
+      storeDir.mkdirs()
+      //storeDir.createNewFile()
+      //println(storeDir.exists())
+      //throw new StoreDirectoryNotFoundException(storeDir)
+    }
+    //println(storeDir.exists())
     val lockFile = new File(storeDir, ".lock")
     if (lockFile.exists()) {
       val fis = new FileInputStream(lockFile)
       val pid = IOUtils.toString(fis).toInt
       fis.close()
 
-      throw new RegionStoreLockedException(storeDir, pid)
+      //throw new RegionStoreLockedException(storeDir, pid)
+      println(s"the last pid is ${pid} at path ${storeDir.getAbsolutePath}")
     }
 
+    println(conf.get(Constants.PARAMETER_KEY_SERVER_HOST).asString)
+    println(conf.get(Constants.PARAMETER_KEY_SERVER_PORT).asInt)
     new FsNodeServer(
-      conf.get(Constants.PARAMETER_KEY_ZOOKEEPER_ADDRESS).asString,
+      //conf.get(Constants.PARAMETER_KEY_ZOOKEEPER_ADDRESS).asString,
+      jrfs,
       conf.get(Constants.PARAMETER_KEY_NODE_ID).asInt,
       storeDir,
       conf.get(Constants.PARAMETER_KEY_SERVER_HOST).withDefault(Constants.DEFAULT_SERVER_HOST).asString,
@@ -55,28 +67,30 @@ object FsNodeServer {
     )
   }
 
-  def create(props: Map[String, String], baseDir: File = null): FsNodeServer = {
-    create(new ConfigurationEx(props), baseDir)
+  def create(props: Map[String, String], baseDir: File = null, jrfs: RegionFsJraftServer): FsNodeServer = {
+    create(new ConfigurationEx(props), baseDir, jrfs)
   }
 
-  def create(configFile: File): FsNodeServer = {
-    create(new ConfigurationEx(configFile), configFile.getParentFile)
+  def create(configFile: File, jrfs: RegionFsJraftServer): FsNodeServer = {
+    create(new ConfigurationEx(configFile), configFile.getParentFile, jrfs)
   }
 }
 
 /**
   * a FsNodeServer responds blob save/read requests
   */
-class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: String, port: Int) extends Logging {
+class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: File, host: String, port: Int) extends Logging {
   assert(nodeId > 0)
 
   if (logger.isDebugEnabled())
     logger.debug(s"[node-$nodeId] initializing, storeDir: ${storeDir.getCanonicalFile.getAbsolutePath}")
 
-  val zookeeper = ZooKeeperClient.create(zks)
-  val (env, address) = createRpcEnv(zookeeper)
+  //val zookeeper = ZooKeeperClient.create(zks)
+  println(s"[node-$nodeId] initializing, storeDir: ${storeDir.getCanonicalFile.getAbsolutePath}")
+  val (env, address) = createRpcEnv()
 
-  val globalSetting = zookeeper.loadGlobalSetting()
+  //val globalSetting = zookeeper.loadGlobalSetting()
+  val globalSetting = jrfs.loadGlobalSetting()
 
   val localRegionManager = new LocalRegionManager(
     nodeId,
@@ -93,9 +107,14 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
   val cachedClients = mutable.Map[Int, FsNodeClient]()
   val mapNeighbourNodeWithAddress = mutable.Map[Int, RpcAddress]()
   val mapNeighbourNodeWithRegionCount = mutable.Map[Int, Int]()
-  val zkNodeEventHandlers = new CompositeParsedChildNodeEventHandler[NodeServerInfo]()
+  //val zkNodeEventHandlers = new CompositeParsedChildNodeEventHandler[NodeServerInfo]()
+  val nodes = jrfs.getAllnodesInfo().array
+  nodes.foreach(u => {
+    mapNeighbourNodeWithAddress += u.nodeId -> u.address
+    mapNeighbourNodeWithRegionCount += u.nodeId -> u.regionCount
+  })
 
-  zkNodeEventHandlers.addHandler(
+/*  zkNodeEventHandlers.addHandler(
     new ParsedChildNodeEventHandler[NodeServerInfo] {
       override def accepts(t: NodeServerInfo): Boolean = true
 
@@ -137,14 +156,15 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
       }
 
       override def accepts(t: NodeServerInfo): Boolean = t.nodeId != nodeId
-    })
+    })*/
 
+  println("here here heere ")
   var alive: Boolean = true
 
   val remoteRegionWatcher: RemoteRegionWatcher = new RemoteRegionWatcher(nodeId,
-    globalSetting, zkNodeEventHandlers, localRegionManager, clientOf)
+    globalSetting, jrfs, localRegionManager, clientOf)
 
-  val neighbourNodesWatcher = zookeeper.watchNodeList(zkNodeEventHandlers)
+  //val neighbourNodesWatcher = zookeeper.watchNodeList(zkNodeEventHandlers)
 
   val endpoint = new FileRpcEndpoint(env)
   env.setupEndpoint("regionfs-service", endpoint)
@@ -167,12 +187,12 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
   def shutdown(): Unit = {
     if (alive) {
       clientFactory.close()
-      neighbourNodesWatcher.close
+      //neighbourNodesWatcher.close
       remoteRegionWatcher.close()
 
       new File(storeDir, ".lock").delete()
       env.shutdown()
-      zookeeper.close()
+      //zookeeper.close()
       println(s"[node-$nodeId] shutdown node server on $address")
       alive = false
     }
@@ -196,7 +216,7 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
     fos.close()
   }
 
-  private def createRpcEnv(zookeeper: ZooKeeperClient): (HippoRpcEnv, RpcAddress) = {
+  private def createRpcEnv(): (HippoRpcEnv, RpcAddress) = {
     val env = HippoRpcEnvFactory.create(
       RpcEnvServerConfig(new RpcConf(), "regionfs-server", host, port))
 
@@ -216,7 +236,8 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
     //NOTE: register only on started up
     override def onStart(): Unit = {
       //register this node
-      zookeeper.createNodeNode(nodeId, address, localRegionManager)
+      //todo set node info
+      //zookeeper.createNodeNode(nodeId, address, localRegionManager)
     }
 
     private def createNewRegion(): (Region, Array[RegionInfo]) = {
@@ -237,7 +258,8 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
 
           //hello, pls create a new localRegion with id=regionId
           val neighbourResults = futures.map(Await.result(_, Duration.Inf).info)
-          zookeeper.updateNodeData(nodeId, address, localRegionManager)
+          //zookeeper.updateNodeData(nodeId, address, localRegionManager)
+          //todo update node server
           remoteRegionWatcher.cacheRemoteSeconaryRegions(neighbourResults)
           neighbourResults
         }
@@ -310,6 +332,7 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
 
     private def receiveAndReplyInternal(ctx: RpcCallContext): PartialFunction[Any, Unit] = {
       //TODO: cancelable task
+      case GetHelloRequest() => ctx.reply(GetHelloResponse("hello world"))
       case ProcessFilesRequest(process) => {
         val results = process(localRegionManager.regions.values.filter(_.isPrimary).flatMap {
           region =>
@@ -345,7 +368,8 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
       //create region as replica
       case CreateSecondaryRegionRequest(regionId: Long) =>
         val region = localRegionManager.createSecondaryRegion(regionId)
-        zookeeper.updateNodeData(nodeId, address, localRegionManager)
+        //zookeeper.updateNodeData(nodeId, address, localRegionManager)
+        //todo update server
         ctx.reply(CreateSecondaryRegionResponse(region.info))
 
       case ShutdownRequest() =>
@@ -525,8 +549,9 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
       val (localRegion: Region, neighbourRegions: Array[RegionInfo]) = chooseRegionForWrite()
       val regionId = localRegion.regionId
 
-      val mutex = zookeeper.createRegionWriteLock(regionId)
-      mutex.acquire()
+      //todo lock write
+      //val mutex = zookeeper.createRegionWriteLock(regionId)
+     // mutex.acquire()
 
       try {
         //i am a primary region
@@ -597,9 +622,9 @@ class FsNodeServer(val zks: String, val nodeId: Int, val storeDir: File, host: S
         }
       }
       finally {
-        if (mutex.isAcquiredInThisProcess) {
-          mutex.release()
-        }
+        //if (mutex.isAcquiredInThisProcess) {
+        //  mutex.release()
+        //}
       }
     }
   }
@@ -639,7 +664,9 @@ class FileNotFoundException(nodeId: Int, fileId: FileId) extends
   RegionFsServerException(s"file not found on node-$nodeId: $fileId") {
 
 }
+case class NodeServerInfo(nodeId: Int, address: RpcAddress, regionCount: Int) {
 
+}
 class NodeIdAlreadyExistException(nodeServerInfo: NodeServerInfo) extends
   RegionFsServerException(s"node id already exist: $nodeServerInfo") {
 

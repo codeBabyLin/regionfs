@@ -7,9 +7,18 @@ import org.grapheco.regionfs.server.{FileEntry, RegionInfo}
 /**
   * Created by bluejoe on 2019/8/23.
   */
+case class GetHelloRequest() {
+
+}
+
+case class GetHelloResponse(msg: String) {
+
+}
+
 case class CreateSecondaryRegionRequest(regionId: Long) {
 
 }
+
 
 case class CreateSecondaryRegionResponse(info: RegionInfo) {
 

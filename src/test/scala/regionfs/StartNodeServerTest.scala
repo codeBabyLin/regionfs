@@ -1,3 +1,4 @@
+/*
 package regionfs
 
 import java.io.File
@@ -67,3 +68,4 @@ class StartNodeServerTest {
       server2.shutdown()
   }
 }
+*/

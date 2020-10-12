@@ -3,6 +3,7 @@ package regionfs
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.nio.ByteBuffer
 
+import cn.regionfs.jraft.RegionFsJraftServer
 import org.apache.commons.io.{FileUtils, IOUtils}
 import org.grapheco.commons.util.{Logging, Profiler}
 import org.grapheco.regionfs.client.{FsAdmin, FsClient}
@@ -72,8 +73,8 @@ class FileTestBase extends Logging {
 
     for (conf <- confs) {
       try {
-        new File(conf("data.storeDir")).mkdirs()
-        servers += FsNodeServer.create(conf)
+        val f = new File(conf("data.storeDir"))
+        servers += FsNodeServer.create(f, new RegionFsJraftServer("1", "2", "3", "4", "5"))
       }
       catch {
         case e: Throwable => {
@@ -82,7 +83,8 @@ class FileTestBase extends Logging {
       }
     }
 
-    admin = new FsAdmin(con.zookeeperString)
+    //admin = new FsAdmin(con.zookeeperString)
+    admin = new FsAdmin("34", "34")
     client = admin
 
     new File(s"./testdata/inputs").mkdirs()
