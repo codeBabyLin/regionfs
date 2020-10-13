@@ -249,6 +249,7 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
 
     private def createNewRegion(): (Region, Array[RegionInfo]) = {
       val localRegion = localRegionManager.createNew()
+      jrfs.sendNodeUpdatetoLeader(NodeServerInfo(nodeId, address, localRegionManager.regions.size))
       val regionId = localRegion.regionId
 
       val neighbourRegions: Array[RegionInfo] = {
@@ -266,7 +267,7 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
           //hello, pls create a new localRegion with id=regionId
           val neighbourResults = futures.map(Await.result(_, Duration.Inf).info)
           //zookeeper.updateNodeData(nodeId, address, localRegionManager)
-          jrfs.sendNodeUpdatetoLeader(NodeServerInfo(nodeId, address, localRegionManager.regions.size))
+          //jrfs.sendNodeUpdatetoLeader(NodeServerInfo(nodeId, address, localRegionManager.regions.size))
           println("update node server")
           //todo update node server
           remoteRegionWatcher.cacheRemoteSeconaryRegions(neighbourResults)

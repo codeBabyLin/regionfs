@@ -323,6 +323,7 @@ class RegionFsJraftServer(dataPath: String,
       Thread.sleep(500)
     }
     fse.handelEvent(this.fsNodeServer)
+    println(fse.event.toString)
     try {
       val task = new Task
       task.setData(ByteBuffer.wrap(SerializerManager.getSerializer(SerializerManager.Hessian2).serialize(fse)))

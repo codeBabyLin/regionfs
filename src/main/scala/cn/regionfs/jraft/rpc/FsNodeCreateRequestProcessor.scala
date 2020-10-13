@@ -7,7 +7,7 @@ class FsNodeCreateRequestProcessor(rfs: RegionFsJraftServer) extends RpcProcesso
   override def handleRequest(rpcContext: RpcContext, t: FsNodeCreateRequest): Unit = {
     rpcContext.sendResponse()
     if(rfs.isLeader){
-      println(s"${t.nodeInfo.address.toString()}: ${t.nodeInfo.regionCount} : ${t.nodeInfo.nodeId}")
+      //println(s"${t.nodeInfo.address.toString()}: ${t.nodeInfo.regionCount} : ${t.nodeInfo.nodeId}")
       rfs.broadNodeCreate(t.nodeInfo)
     }
   }
