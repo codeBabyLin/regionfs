@@ -2,17 +2,20 @@ package jraft
 import java.io.{File, FileInputStream, FileOutputStream}
 import java.nio.ByteBuffer
 
+import cn.regionfs.jraft.rpc.FsNodeCreateRequest
 import net.neoremind.kraps.RpcConf
 import net.neoremind.kraps.rpc.{RpcAddress, RpcEnvClientConfig}
 import net.neoremind.kraps.rpc.netty.{HippoRpcEnv, HippoRpcEnvFactory}
 import org.apache.commons.io.IOUtils
 import org.grapheco.hippo.{HippoClientFactory, HippoRpcHandler, HippoServer, ReceiveContext}
-import org.grapheco.regionfs.{GetHelloRequest, GetHelloResponse}
+import org.grapheco.regionfs.{FileId, GetHelloRequest, GetHelloResponse}
 import org.grapheco.regionfs.client.FsClient
+import org.grapheco.regionfs.server.NodeServerInfo
 import org.junit.Test
 
 import scala.concurrent.{Await, CanAwait}
 import scala.concurrent.duration.Duration
+import scala.util.Random
 
 class FsClientTest {
 
@@ -53,8 +56,11 @@ class FsClientTest {
     val client = new FsClient(groupId, initConfStr)
     val i = 999
     //val id = client.writeFile(new File(s"./testdata/inputs/$i").)
-    val id = client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/999")))))
-    println(id)
+    //Await.result(client.askWithBuffer[GetHelloResponse](GetHelloRequest), Duration.Inf)
+    client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/999")))))
+    val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/999"))))), Duration.Inf)
+    println(s"regionID:${id.regionId}   localId:${id.localId}")
+    //println(id)
   }
 
   @Test
@@ -94,5 +100,48 @@ class FsClientTest {
     val client = HippoClientFactory.create("test", Map()).createClient("127.0.0.1", 5678)
     val res = Await.result(client.askWithBuffer[GetHelloResponse](GetHelloRequest), Duration.Inf)
     println(res.msg)
+  }
+
+  @Test
+  def randomWalk(): Unit = {
+    var x = 0
+    var y = 0
+    var z = 0
+    val loop = 10000000
+    val array = Array(11, 12, 21, 22, 31, 32)
+    var d1 = 0.0
+    var d2 = 0.0
+    var d3 = 0.0
+    //println(array(Random.nextInt(array.length)))
+    for (i <- 1 to loop) {
+      val delta = array(Random.nextInt(array.length))
+      delta match {
+        case 11 => x += 1
+        case 12 => x -= 1
+        case 21 => y += 1
+        case 22 => y -= 1
+        case 31 => z += 1
+        case 32 => z -= 1
+      }
+      //x += array(Random.nextInt(array.length))
+      //y += array(Random.nextInt(array.length))
+      //z += array(Random.nextInt(array.length))
+      if (x==0 || y==0 || z==0) d1 += 1
+      if ((x==0 && y==0)||(y==0 && z==0)||(x==0 && z==0)) d2 +=1
+      if (x==0 && y==0 && z==0) d3 +=1
+    }
+    println(s"the 1d p is $x: ${d1/loop}")
+    println(s"the 2d p is $y: ${d2/loop}")
+    println(s"the 3d p is $z: ${d3}")
+
+  }
+
+  @Test
+  def testHjl(): Unit = {
+    val client = new FsClient(groupId, initConfStr)
+    val ed = client.jc.leader
+    val ni = new NodeServerInfo(1, null, 2)
+    val cr = new FsNodeCreateRequest(ni)
+    client.jc.client.invokeSync(ed.getEndpoint, cr, 5000)
   }
 }

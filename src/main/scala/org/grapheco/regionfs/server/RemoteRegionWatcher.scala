@@ -24,7 +24,7 @@ class RemoteRegionWatcher(nodeId: Int, globalSetting: GlobalSetting,
                           jrfs: RegionFsJraftServer,
                           localRegionManager: LocalRegionManager,
                           clientOf: (Int) => FsNodeClient) {
-  private val _mapRemoteSecondaryRegions = mutable.Map[Long, mutable.Map[Int, RegionInfo]]()
+  val _mapRemoteSecondaryRegions = mutable.Map[Long, mutable.Map[Int, RegionInfo]]()
 
   def cachedRemoteSecondaryRegions(regionId: Long) = _mapRemoteSecondaryRegions(regionId).values
 
@@ -39,7 +39,7 @@ class RemoteRegionWatcher(nodeId: Int, globalSetting: GlobalSetting,
 
   //watch zknodes
   //todo use jraftserver to watch zknodes
-  jrfs.getAllnodesInfo().array.filter(_.nodeId != nodeId).foreach(u => reportLocalSeconaryRegions(u.nodeId))
+  //jrfs.getAllnodesInfo().array.filter(_.nodeId != nodeId).foreach(u => reportLocalSeconaryRegions(u.nodeId))
 /*  zkNodeEventHandlers.addHandler(new ParsedChildNodeEventHandler[NodeServerInfo] {
     override def onCreated(t: NodeServerInfo): Unit = {
       reportLocalSeconaryRegions(t.nodeId)
@@ -62,7 +62,7 @@ class RemoteRegionWatcher(nodeId: Int, globalSetting: GlobalSetting,
     override def accepts(t: NodeServerInfo): Boolean = t.nodeId != nodeId
   })*/
 
-  private def reportLocalSeconaryRegions(nodeId: Int): Unit = {
+   def reportLocalSeconaryRegions(nodeId: Int): Unit = {
     val localRegions = localRegionManager.regions.values.filter(region => region.nodeId == nodeId && region.isSecondary)
     //noinspection EmptyCheck
     if (localRegions.nonEmpty) {

@@ -92,6 +92,8 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
   //val globalSetting = zookeeper.loadGlobalSetting()
   val globalSetting = jrfs.loadGlobalSetting()
 
+  //val localRegionManager:LocalRegionManager  = lrm
+
   val localRegionManager = new LocalRegionManager(
     nodeId,
     storeDir,
@@ -108,11 +110,11 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
   val mapNeighbourNodeWithAddress = mutable.Map[Int, RpcAddress]()
   val mapNeighbourNodeWithRegionCount = mutable.Map[Int, Int]()
   //val zkNodeEventHandlers = new CompositeParsedChildNodeEventHandler[NodeServerInfo]()
-  val nodes = jrfs.getAllnodesInfo().array
+/*  val nodes = jrfs.getAllnodesInfo().array
   nodes.foreach(u => {
     mapNeighbourNodeWithAddress += u.nodeId -> u.address
     mapNeighbourNodeWithRegionCount += u.nodeId -> u.regionCount
-  })
+  })*/
 
 /*  zkNodeEventHandlers.addHandler(
     new ParsedChildNodeEventHandler[NodeServerInfo] {
@@ -224,6 +226,11 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
     env -> address
   }
 
+  def start(): Unit = {
+    val nodeinfo = NodeServerInfo(nodeId, address, localRegionManager.regions.size)
+    jrfs.sendNodeCreatetoLeader(nodeinfo)
+  }
+
   class FileRpcEndpoint(override val rpcEnv: HippoRpcEnv)
     extends RpcEndpoint
       with HippoRpcHandler
@@ -259,6 +266,8 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
           //hello, pls create a new localRegion with id=regionId
           val neighbourResults = futures.map(Await.result(_, Duration.Inf).info)
           //zookeeper.updateNodeData(nodeId, address, localRegionManager)
+          jrfs.sendNodeUpdatetoLeader(NodeServerInfo(nodeId, address, localRegionManager.regions.size))
+          println("update node server")
           //todo update node server
           remoteRegionWatcher.cacheRemoteSeconaryRegions(neighbourResults)
           neighbourResults
@@ -370,6 +379,7 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
         val region = localRegionManager.createSecondaryRegion(regionId)
         //zookeeper.updateNodeData(nodeId, address, localRegionManager)
         //todo update server
+        jrfs.sendNodeUpdatetoLeader(NodeServerInfo(nodeId, address, localRegionManager.regions.size))
         ctx.reply(CreateSecondaryRegionResponse(region.info))
 
       case ShutdownRequest() =>
@@ -553,6 +563,10 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
       //val mutex = zookeeper.createRegionWriteLock(regionId)
      // mutex.acquire()
 
+      while(!jrfs.LockRegionId(regionId.toInt, nodeId)) {
+        Thread.sleep(1000)
+      }
+      println("lock write")
       try {
         //i am a primary region
         if (globalSetting.replicaNum > 1 &&
@@ -622,9 +636,7 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
         }
       }
       finally {
-        //if (mutex.isAcquiredInThisProcess) {
-        //  mutex.release()
-        //}
+        jrfs.UnlockRegionId(regionId.toInt, nodeId)
       }
     }
   }
@@ -633,6 +645,10 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
 
 class RegionFsServerException(msg: String, cause: Throwable = null) extends
   RegionFsException(msg, cause) {
+}
+
+class RegionFsServerNullException() extends RegionFsServerException(s"node server is null"){
+
 }
 
 class InsufficientNodeServerException(actual: Int, required: Int) extends

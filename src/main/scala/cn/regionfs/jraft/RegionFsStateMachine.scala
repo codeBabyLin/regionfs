@@ -3,6 +3,8 @@ package cn.regionfs.jraft
 import java.io.File
 import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicLong
+
+import cn.regionfs.jraft.rpc.FsServerEvent
 import cn.regionfs.jraft.snapshot.{LogIndexFile, PandaGraphSnapshotFile}
 import com.alipay.remoting.exception.CodecException
 import com.alipay.remoting.serialization.SerializerManager
@@ -12,13 +14,20 @@ import com.alipay.sofa.jraft.storage.snapshot.{SnapshotReader, SnapshotWriter}
 import com.alipay.sofa.jraft.util.Utils
 import org.grapheco.commons.util.Logging
 import com.alipay.sofa.jraft.{Closure, Status, Iterator => SofaIterator}
+import org.grapheco.regionfs.server.FsNodeServer
 
-class RegionFsStateMachine() extends StateMachineAdapter with Logging{
+class RegionFsStateMachine(path: String) extends StateMachineAdapter with Logging{
 
   /**
     * Leader term
     */
   private val leaderTerm = new AtomicLong(-1)
+
+  var fs: FsNodeServer = null
+
+  def setFsNodeServer(server: FsNodeServer): Unit = {
+    fs = server
+  }
 
   val logIndexFile: LogIndexFile = new LogIndexFile(getLogIndexPath())
 
@@ -39,21 +48,27 @@ class RegionFsStateMachine() extends StateMachineAdapter with Logging{
       logger.info("wait for GraphDatabaseService available")
     }*/
     var logIndex: Long = logIndexFile.load()
-    while ( iter.hasNext()) {
-      //var writeOperations: WriteOperations = null
+    //println("task come!!!!")
+    while ( iter.hasNext() && iter.getIndex > logIndex) {
+      var fsEvent: FsServerEvent = null
       // leader not apply task
-      if (!isLeader && iter.getIndex > logIndex) { // Have to parse FetchAddRequest from this user log.
+      if (!isLeader) { // Have to parse FetchAddRequest from this user log.
         val data = iter.getData
         try {
-         // writeOperations = SerializerManager.getSerializer(SerializerManager.Hessian2).deserialize(data.array, classOf[WriteOperations].getName)
+          fsEvent = SerializerManager.getSerializer(SerializerManager.Hessian2).deserialize(data.array, classOf[FsServerEvent].getName)
         }
         catch {
           case e: CodecException =>
             logger.error("Fail to decode WriteOperations", e)
         }
-        //if (writeOperations != null) {
-          //writeOperations.applyTxOpeartionsToDB(neo4jDB)
-       // }
+        println(s"${fsEvent.getEvent().toString}")
+        while(this.fs == null) {
+          println("fs is null =====")
+          Thread.sleep(500)
+        }
+
+        fsEvent.handelEvent(this.fs)
+        //}
       }
       iter.next
     }
@@ -65,7 +80,7 @@ class RegionFsStateMachine() extends StateMachineAdapter with Logging{
   def getDataPath(): String = {
     //val pandaConfig: PandaConfig = PandaRuntimeContext.contextGet[PandaConfig]()
     //pandaConfig.dataPath
-    null
+    path
   }
 
   def getActiveDatabase(): String = {

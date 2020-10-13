@@ -6,9 +6,13 @@ import java.util
 import java.util.Optional
 
 import cn.regionfs.jraft.RegionFsJraftServer
+import org.apache.commons.io.FileUtils
 
 object ServerStart {
-
+  def main(args: Array[String]): Unit = {
+    FileUtils.deleteDirectory(new File("./output"))
+    FileUtils.deleteDirectory(new File("./foutput"))
+  }
 }
 
 object ServerStart1 {
