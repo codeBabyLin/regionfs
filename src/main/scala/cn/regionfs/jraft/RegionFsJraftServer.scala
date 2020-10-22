@@ -39,6 +39,7 @@ class RegionFsJraftServer(dataPath: String,
   private var fsm: RegionFsStateMachine = null
   val conf = getconf()
   var fsNodeServer : FsNodeServer = null
+  var fsNodeServerIsStart: Boolean = conf.get(Constants.PARAMETER_KEY_NODE_ISSTART).asBoolean
   var lockRegionIds =  mutable.Map[Int, Int]()
 
   // parse args
@@ -66,7 +67,7 @@ class RegionFsJraftServer(dataPath: String,
 
 
     // init state machine
-    this.fsm = new RegionFsStateMachine(dataPath)
+    this.fsm = new RegionFsStateMachine(dataPath, fsNodeServerIsStart)
     // set NodeOption
     val nodeOptions = new NodeOptions
     // init configuration
@@ -139,10 +140,12 @@ class RegionFsJraftServer(dataPath: String,
     else this.fsNodeServer.localRegionManager.regions.size
   }
   def startFsNodeServer(): Unit = {
-    this.fsNodeServer = new FsNodeServer(this, getNodeId(), getStoreDir(), getServerHost, getServerPort)
-    this.fsNodeServer.start()
-    this.fsm.setFsNodeServer(this.fsNodeServer)
-    this.fsNodeServer.awaitTermination()
+    if (fsNodeServerIsStart){
+      this.fsNodeServer = new FsNodeServer(this, getNodeId(), getStoreDir(), getServerHost, getServerPort)
+      this.fsNodeServer.start()
+      this.fsm.setFsNodeServer(this.fsNodeServer)
+      this.fsNodeServer.awaitTermination()
+    }
     //FsNodeServer.create(new File(confPath), this).awaitTermination()
   }
 

@@ -16,7 +16,7 @@ import org.grapheco.commons.util.Logging
 import com.alipay.sofa.jraft.{Closure, Status, Iterator => SofaIterator}
 import org.grapheco.regionfs.server.FsNodeServer
 
-class RegionFsStateMachine(path: String) extends StateMachineAdapter with Logging{
+class RegionFsStateMachine(path: String, isServerStart: Boolean) extends StateMachineAdapter with Logging{
 
   /**
     * Leader term
@@ -47,6 +47,7 @@ class RegionFsStateMachine(path: String) extends StateMachineAdapter with Loggin
  /*   while (!neo4jDB.isAvailable(1000)) {
       logger.info("wait for GraphDatabaseService available")
     }*/
+    if (!isServerStart) return
     var logIndex: Long = logIndexFile.load()
     //println("task come!!!!")
     while ( iter.hasNext() && iter.getIndex > logIndex) {

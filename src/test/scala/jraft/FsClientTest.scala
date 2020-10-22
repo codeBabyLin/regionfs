@@ -1,5 +1,5 @@
 package jraft
-import java.io.{File, FileInputStream, FileOutputStream}
+import java.io.{File, FileInputStream, FileOutputStream, FileWriter, InputStream}
 import java.nio.ByteBuffer
 
 import cn.regionfs.jraft.rpc.FsNodeCreateRequest
@@ -11,8 +11,10 @@ import org.grapheco.hippo.{HippoClientFactory, HippoRpcHandler, HippoServer, Rec
 import org.grapheco.regionfs.{FileId, GetHelloRequest, GetHelloResponse}
 import org.grapheco.regionfs.client.FsClient
 import org.grapheco.regionfs.server.NodeServerInfo
-import org.junit.Test
+import org.junit.{Assert, Test}
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Await, CanAwait}
 import scala.concurrent.duration.Duration
 import scala.util.Random
@@ -41,7 +43,7 @@ class FsClientTest {
   }
 
   def prepareData(): Unit ={
-    val BLOB_LENGTH = Array[Long](999, 2048, 9999, 99999, 999999, 9999999)
+    val BLOB_LENGTH = Array[Long](999, 2048, 9999, 99999, 999999, 9999999, 1024 *1024)
     for (i <- BLOB_LENGTH) {
       val file = new File(s"./testdata/inputs/$i")
       file.getParentFile.mkdirs()
@@ -51,15 +53,65 @@ class FsClientTest {
   }
 
   @Test
-  def testFileWtiteAndRead(): Unit ={
+  def testFileWtiteAndRead(): Unit = {
     prepareData()
     val client = new FsClient(groupId, initConfStr)
     val i = 999
+
+    val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/${i}"))))), Duration.Inf)
+
+    val res = Await.result(client.readFile(id, (is) => IOUtils.toByteArray(is)), Duration.Inf)
+
+    val data = IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/${i}")))
+
+    Assert.assertArrayEquals(res, data)
+  }
+
+  @Test
+  def testFileWtiteLatency(): Unit ={
+    prepareData()
+    val client = new FsClient(groupId, initConfStr)
+    val i = 1024 *1024
+
+
+   // def consum(input: InputStream): =
     //val id = client.writeFile(new File(s"./testdata/inputs/$i").)
     //Await.result(client.askWithBuffer[GetHelloResponse](GetHelloRequest), Duration.Inf)
-    client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/999")))))
-    val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/999"))))), Duration.Inf)
-    println(s"regionID:${id.regionId}   localId:${id.localId}")
+    //client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/999")))))
+    //val array = mutable.Map[Int, Long]()
+    val array: ArrayBuffer[Long] = ArrayBuffer[Long]()
+    for (iii <- 1 to 10){
+
+      for (ii <- 1 to 100){
+        val t1 = System.currentTimeMillis()
+        val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/${i}"))))), Duration.Inf)
+        val t2 = System.currentTimeMillis()
+        val t3 = t2 - t1
+        array += t3
+        println(s"write file cost time: ${t2-t1}")
+      }
+
+     // array += iii -> (t2-t1)
+    }
+    val out = new FileWriter("./time.txt",true)
+    array.foreach(u => {
+      out.write(u.toString)
+      out.write("\n")
+    })
+    out.close()
+
+
+   // array.values.foreach(u => {
+    //  println(u)
+    //})
+    //val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/${i}"))))), Duration.Inf)
+    //val res = Await.result(client.readFile(id, (is) => IOUtils.toByteArray(is)), Duration.Inf)
+
+   // val data = IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/${i}")))
+
+    //Assert.assertArrayEquals(res, data)
+
+    //println(s"regionID:${id.regionId}   localId:${id.localId}")
     //println(id)
   }
 

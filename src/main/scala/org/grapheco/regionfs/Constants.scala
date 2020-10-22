@@ -20,6 +20,7 @@ object Constants {
   val DEFAULT_SERVER_HOST = "localhost"
   val DEFAULT_SERVER_PORT = 1224
   val DEFAULT_WRITE_RETRY_TIMES = 3
+  val DEFAULT_NODE_ISSTART = true
 
   //20G
   val WRITE_CHUNK_SIZE: Int = 1024 * 10
@@ -52,4 +53,5 @@ object Constants {
   val PARAMETER_KEY_SERVER_PORT = "server.port"
   val PARAMETER_KEY_DATA_STORE_DIR = "data.storeDir"
   val PARAMETER_KEY_WRITE_RETRY_TIMES = "write.retry.times"
+  val PARAMETER_KEY_NODE_ISSTART = "node.start"
 }
