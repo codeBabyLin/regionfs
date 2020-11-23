@@ -5,7 +5,7 @@ import java.nio.ByteBuffer
 import java.util.Properties
 import java.util.concurrent.Executors
 
-import cn.regionfs.jraft.rpc.{GetAllNodesInfoRequest, NodesInfoResponse}
+import cn.regionfs.jraft.rpc.{GetAllNodesInfoRequest, GetNodeIDRequest, NodesInfoResponse}
 import com.alipay.sofa.jraft.RouteTable
 import com.alipay.sofa.jraft.conf.Configuration
 import com.alipay.sofa.jraft.option.CliOptions
@@ -94,7 +94,8 @@ class FsClient(groupId: String, confstr: String) extends Logging {
   def writeFile(content: ByteBuffer): Future[FileId] = {
     assertNodesNotEmpty()
     val crc32 = CrcUtils.computeCrc32(content.duplicate())
-    val chosenNodeId: Int = ringNodes.take()
+    //val chosenNodeId: Int = ringNodes.take()
+    val chosenNodeId: Int = jc.getNodeID()
     val client = clientOf(chosenNodeId)
     implicit val ec: ExecutionContext = client.executionContext
     client.createFile(crc32, content.duplicate()).map(
@@ -207,6 +208,12 @@ class JraftClient(groupId: String, confstr: String) {
     client.invokeSync(leader.getEndpoint, request, 5000)
       .asInstanceOf[NodesInfoResponse]
     //todo watch node on/off line
+  }
+
+  def getNodeID(): Int = {
+    val request = new GetNodeIDRequest
+    client.invokeSync(leader.getEndpoint, request, 5000)
+      .asInstanceOf[Int]
   }
 
   def loadGlobalSetting(): GlobalSetting = {

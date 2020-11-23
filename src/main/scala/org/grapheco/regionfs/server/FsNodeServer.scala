@@ -160,7 +160,7 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
       override def accepts(t: NodeServerInfo): Boolean = t.nodeId != nodeId
     })*/
 
-  println("here here heere ")
+  //println("here here heere ")
   var alive: Boolean = true
 
   val remoteRegionWatcher: RemoteRegionWatcher = new RemoteRegionWatcher(nodeId,
@@ -267,7 +267,7 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
           //hello, pls create a new localRegion with id=regionId
           val neighbourResults = futures.map(Await.result(_, Duration.Inf).info)
           //zookeeper.updateNodeData(nodeId, address, localRegionManager)
-          //jrfs.sendNodeUpdatetoLeader(NodeServerInfo(nodeId, address, localRegionManager.regions.size))
+          jrfs.sendNodeUpdatetoLeader(NodeServerInfo(nodeId, address, localRegionManager.regions.size))
           println("update node server")
           //todo update node server
           remoteRegionWatcher.cacheRemoteSeconaryRegions(neighbourResults)
@@ -638,6 +638,7 @@ class FsNodeServer(jrfs: RegionFsJraftServer, val nodeId: Int, val storeDir: Fil
       }
       finally {
         jrfs.UnlockRegionId(regionId.toInt, nodeId)
+        println("unlock write")
       }
     }
   }

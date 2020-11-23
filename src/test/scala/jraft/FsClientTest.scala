@@ -57,15 +57,42 @@ class FsClientTest {
     prepareData()
     val client = new FsClient(groupId, initConfStr)
     val i = 999
+    val pathname = "F:/data/1.jpg"
 
-    val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/${i}"))))), Duration.Inf)
+    val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(pathname))))), Duration.Inf)
 
     val res = Await.result(client.readFile(id, (is) => IOUtils.toByteArray(is)), Duration.Inf)
 
-    val data = IOUtils.toByteArray(new FileInputStream(new File(s"./testdata/inputs/${i}")))
+    val data = IOUtils.toByteArray(new FileInputStream(new File(pathname)))
 
     Assert.assertArrayEquals(res, data)
   }
+
+  @Test
+  def testTime(): Unit = {
+    val client = new FsClient(groupId, initConfStr)
+    val t1 = System.currentTimeMillis()
+    val fileIds = ArrayBuffer[FileId]()
+    for (i <- 1 to 972){
+      val pathname = s"F:/data/${i}.jpg"
+      val id = Await.result(client.writeFile(ByteBuffer.wrap(IOUtils.toByteArray(new FileInputStream(new File(pathname))))), Duration.Inf)
+      fileIds += id
+    }
+    val t2 = System.currentTimeMillis()
+    println(s"write cost time: ${t2-t1}")
+    var fi = 0
+    fileIds.foreach(u =>{
+      fi = fi + 1
+      val pathname = s"F:/data/${fi}.jpg"
+      val res = Await.result(client.readFile(u, (is) => IOUtils.toByteArray(is)), Duration.Inf)
+      val data = IOUtils.toByteArray(new FileInputStream(new File(pathname)))
+
+      Assert.assertArrayEquals(res, data)
+    })
+    val t3 = System.currentTimeMillis()
+    println(s"read cost time: ${t3-t2}")
+  }
+
 
   @Test
   def testFileWtiteLatency(): Unit ={

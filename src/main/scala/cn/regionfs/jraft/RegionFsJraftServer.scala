@@ -6,7 +6,7 @@ import java.nio.file.Paths
 import java.util.Properties
 
 import scala.collection.JavaConverters._
-import cn.regionfs.jraft.rpc.{FsNodeCreateRequest, FsNodeCreateRequestProcessor, FsNodeUpdateRequest, FsNodeUpdateRequestProcessor, FsServerEvent, GetAllNodesInfoRequestProcessor, LockRegionIdRequest, LockRegionIdRequestProcessor, LockRegionIdResponse, NodeCreateEvent, NodeDeleteEvent, NodeInfo, NodeUpdateEvent, NodesInfoResponse, UnLockRegionIdRequest, UnLockRegionIdRequestProcessor}
+import cn.regionfs.jraft.rpc.{FsNodeCreateRequest, FsNodeCreateRequestProcessor, FsNodeUpdateRequest, FsNodeUpdateRequestProcessor, FsServerEvent, GetAllNodesInfoRequestProcessor, GetNodeIDReuqestProcessor, LockRegionIdRequest, LockRegionIdRequestProcessor, LockRegionIdResponse, NodeCreateEvent, NodeDeleteEvent, NodeInfo, NodeUpdateEvent, NodesInfoResponse, UnLockRegionIdRequest, UnLockRegionIdRequestProcessor}
 import com.alipay.remoting.exception.CodecException
 import com.alipay.remoting.serialization.SerializerManager
 import com.alipay.sofa.jraft.conf.Configuration
@@ -64,6 +64,7 @@ class RegionFsJraftServer(dataPath: String,
     rpcServer.registerProcessor(new FsNodeUpdateRequestProcessor(this))
     rpcServer.registerProcessor(new LockRegionIdRequestProcessor(this))
     rpcServer.registerProcessor(new UnLockRegionIdRequestProcessor(this))
+    rpcServer.registerProcessor(new GetNodeIDReuqestProcessor(this))
 
 
     // init state machine
